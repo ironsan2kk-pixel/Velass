@@ -1,0 +1,4 @@
+# Raw data storage
+# Place .parquet files here
+# Format: SYMBOL_TIMEFRAME.parquet
+# Example: BTCUSDT_1h.parquet

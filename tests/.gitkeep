@@ -1,0 +1,6 @@
+# Tests module
+# Files to be added:
+# - test_strategy.py
+# - test_backtest.py
+# - test_signals.py
+# - etc.

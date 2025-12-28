@@ -1,0 +1,6 @@
+# Core module - Strategy logic
+# Files to be added:
+# - strategy.py
+# - signals.py
+# - filters.py
+# - portfolio.py

@@ -1,0 +1,5 @@
+# Data module - Binance API and storage
+# Files to be added:
+# - binance_client.py
+# - websocket.py
+# - storage.py

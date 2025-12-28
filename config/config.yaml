@@ -1,0 +1,232 @@
+# VELAS Trading System - Main Configuration
+
+# ===== System =====
+system:
+  name: "Velas Trading System"
+  version: "1.0.0"
+  environment: "development"  # development, production
+  log_level: "INFO"
+
+# ===== Trading Pairs =====
+pairs:
+  - BTCUSDT
+  - ETHUSDT
+  - BNBUSDT
+  - SOLUSDT
+  - XRPUSDT
+  - ADAUSDT
+  - AVAXUSDT
+  - DOGEUSDT
+  - DOTUSDT
+  - MATICUSDT
+  - LINKUSDT
+  - UNIUSDT
+  - ATOMUSDT
+  - LTCUSDT
+  - ETCUSDT
+  - NEARUSDT
+  - APTUSDT
+  - ARBUSDT
+  - OPUSDT
+  - INJUSDT
+
+# ===== Timeframes =====
+timeframes:
+  - "30m"
+  - "1h"
+  - "2h"
+
+# ===== Strategy Parameters =====
+strategy:
+  # Take-Profit levels (% from entry)
+  tp_levels:
+    - 1.0
+    - 2.0
+    - 3.0
+    - 4.0
+    - 7.5
+    - 14.0
+  
+  # Position distribution per TP (%)
+  tp_distribution:
+    - 17
+    - 17
+    - 17
+    - 17
+    - 16
+    - 16
+  
+  # Stop-Loss (% from entry)
+  sl_percent: 8.5
+  
+  # Stop management: "cascade" or "breakeven"
+  stop_management: "cascade"
+  
+  # Breakeven after TP (if stop_management = breakeven)
+  breakeven_after_tp: 3
+
+# ===== Default Velas Parameters =====
+# These can be overridden per pair/group
+velas_params:
+  i1: 60    # Channel period
+  i2: 14    # StdDev period
+  i3: 1.2   # StdDev multiplier
+  i4: 1.5   # ATR multiplier
+  i5: 1.5   # MA distance percent
+
+# ===== Filters =====
+filters:
+  # Multi-timeframe filter
+  mtf:
+    enabled: true
+    timeframe: "4h"
+  
+  # Volume filter
+  volume:
+    enabled: true
+    multiplier: 1.2
+    period: 20
+  
+  # RSI filter
+  rsi:
+    enabled: false
+    period: 14
+    long_level: 50
+    short_level: 50
+  
+  # ADX filter
+  adx:
+    enabled: true
+    period: 14
+    level: 25
+  
+  # Volatility filter (BB width)
+  volatility:
+    enabled: true
+    bb_period: 20
+    bb_std: 2.0
+    min_width_percentile: 20
+  
+  # BTC correlation filter
+  btc_correlation:
+    enabled: false
+    threshold: 0.7
+
+# ===== Portfolio =====
+portfolio:
+  # Maximum simultaneous positions
+  max_positions: 5
+  
+  # Maximum positions per correlation group
+  max_per_group: 2
+  
+  # Position size (% of portfolio)
+  position_size_pct: 2.0
+  
+  # Maximum portfolio heat (total risk)
+  max_portfolio_heat: 15.0
+  
+  # Correlation groups
+  groups:
+    majors:
+      - BTCUSDT
+      - ETHUSDT
+    
+    layer1:
+      - SOLUSDT
+      - AVAXUSDT
+      - DOTUSDT
+      - ATOMUSDT
+      - NEARUSDT
+      - APTUSDT
+    
+    defi:
+      - LINKUSDT
+      - UNIUSDT
+      - ARBUSDT
+      - OPUSDT
+      - INJUSDT
+    
+    legacy:
+      - LTCUSDT
+      - ETCUSDT
+      - XRPUSDT
+      - ADAUSDT
+    
+    meme:
+      - DOGEUSDT
+      - MATICUSDT
+      - BNBUSDT
+
+# ===== Exchange =====
+exchange:
+  name: "binance"
+  type: "futures"  # futures, spot
+  leverage: 10
+  margin_type: "cross"  # cross, isolated
+
+# ===== Telegram =====
+telegram:
+  enabled: true
+  # Bot token and chat ID in secrets.yaml
+  
+  # Message settings
+  send_signals: true
+  send_tp_notifications: true
+  send_sl_notifications: true
+  send_anomaly_alerts: true
+  
+  # Cornix format
+  cornix_format: true
+
+# ===== Monitoring =====
+monitoring:
+  # Dashboard
+  dashboard:
+    enabled: true
+    port: 8080
+  
+  # Alerts
+  alerts:
+    # Loss streak alert
+    loss_streak_threshold: 3
+    
+    # Volatility spike alert
+    volatility_spike_multiplier: 2.0
+    
+    # Signal frequency alert (signals per 4 hours)
+    max_signals_per_period: 5
+    signal_period_hours: 4
+
+# ===== Backtest =====
+backtest:
+  # Default period
+  start_date: "2023-01-01"
+  end_date: "2024-12-01"
+  
+  # Walk-forward settings
+  optimization_window_months: 6
+  test_window_months: 2
+  step_months: 2
+  
+  # Out-of-sample ratio
+  oos_ratio: 0.3
+
+# ===== Logging =====
+logging:
+  # Log to file
+  file:
+    enabled: true
+    path: "logs/velas.log"
+    rotation: "10 MB"
+    retention: "1 month"
+  
+  # Log to console
+  console:
+    enabled: true
+    level: "INFO"
+
+# ===== Database =====
+database:
+  type: "sqlite"  # sqlite, postgresql
+  path: "data_store/velas.db"

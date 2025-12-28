@@ -1,0 +1,52 @@
+# VELAS Trading System - Requirements
+# Python 3.11+
+
+# ===== Data Processing =====
+pandas>=2.0.0
+numpy>=1.24.0
+polars>=0.19.0
+
+# ===== Technical Analysis =====
+ta>=0.10.2
+# ta-lib>=0.4.28  # Requires system installation
+
+# ===== Binance API =====
+python-binance>=1.0.17
+websockets>=11.0
+aiohttp>=3.8.0
+
+# ===== Telegram =====
+python-telegram-bot>=20.0
+
+# ===== Database =====
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+
+# ===== Async =====
+asyncio-throttle>=1.0.2
+
+# ===== Web Dashboard =====
+fastapi>=0.100.0
+uvicorn>=0.23.0
+jinja2>=3.1.0
+
+# ===== Configuration =====
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# ===== Logging =====
+loguru>=0.7.0
+
+# ===== Visualization =====
+matplotlib>=3.7.0
+plotly>=5.15.0
+
+# ===== Testing =====
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# ===== Code Quality =====
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.4.0
