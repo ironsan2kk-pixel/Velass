@@ -98,6 +98,94 @@ class AlertRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class StrategyRecord(Base):
+    """Database model for registered strategies."""
+    __tablename__ = "strategies"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), unique=True, index=True)
+    description = Column(Text)
+    default_params = Column(Text)  # JSON string
+    params_schema = Column(Text)   # JSON string
+    is_builtin = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PairConfigRecord(Base):
+    """Database model for pair-strategy configurations."""
+    __tablename__ = "pair_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    pair = Column(String(20), index=True)
+    strategy_name = Column(String(50), index=True)
+    timeframe = Column(String(10), default="1h")
+    params = Column(Text)  # JSON string - override params
+    is_live = Column(Boolean, default=False)  # Live trading enabled
+    is_backtest = Column(Boolean, default=True)  # Backtest enabled
+    risk_per_trade = Column(Float, default=0.02)
+    max_positions = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class BacktestResultRecord(Base):
+    """Database model for backtest results."""
+    __tablename__ = "backtest_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    backtest_id = Column(String(50), unique=True, index=True)
+    pair = Column(String(20), index=True)
+    strategy_name = Column(String(50), index=True)
+    timeframe = Column(String(10))
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+    params = Column(Text)  # JSON string
+
+    # Metrics
+    total_trades = Column(Integer, default=0)
+    win_rate = Column(Float, default=0.0)
+    profit_factor = Column(Float, default=0.0)
+    total_return = Column(Float, default=0.0)
+    max_drawdown = Column(Float, default=0.0)
+    sharpe_ratio = Column(Float, default=0.0)
+    sortino_ratio = Column(Float, default=0.0)
+
+    # Full metrics JSON
+    full_metrics = Column(Text)  # JSON string
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(20), default="completed")
+
+
+class LiveSessionRecord(Base):
+    """Database model for live trading sessions."""
+    __tablename__ = "live_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(50), unique=True, index=True)
+    pair = Column(String(20), index=True)
+    strategy_name = Column(String(50), index=True)
+    timeframe = Column(String(10))
+    params = Column(Text)  # JSON string
+
+    # Session state
+    status = Column(String(20), default="stopped")  # running, stopped, paused
+    started_at = Column(DateTime, nullable=True)
+    stopped_at = Column(DateTime, nullable=True)
+
+    # Performance
+    total_trades = Column(Integer, default=0)
+    realized_pnl = Column(Float, default=0.0)
+    unrealized_pnl = Column(Float, default=0.0)
+
+    # Config
+    is_paper = Column(Boolean, default=True)  # Paper or real trading
+    initial_balance = Column(Float, default=0.0)
+    current_balance = Column(Float, default=0.0)
+
+
 class DataStorage:
     """
     Unified data storage handler.
@@ -466,3 +554,295 @@ class DataStorage:
             with open(filepath, "r") as f:
                 return json.load(f)
         return None
+
+    # === Strategy Operations ===
+
+    def save_strategy(self, strategy_info: Dict[str, Any]) -> None:
+        """Save or update strategy in database."""
+        session = self.get_session()
+        try:
+            existing = session.query(StrategyRecord).filter_by(
+                name=strategy_info.get("name", "")
+            ).first()
+
+            if existing:
+                existing.description = strategy_info.get("description", existing.description)
+                existing.default_params = json.dumps(strategy_info.get("default_params", {}))
+                existing.params_schema = json.dumps(strategy_info.get("params_schema", {}))
+                existing.is_active = strategy_info.get("is_active", existing.is_active)
+            else:
+                record = StrategyRecord(
+                    name=strategy_info.get("name", ""),
+                    description=strategy_info.get("description", ""),
+                    default_params=json.dumps(strategy_info.get("default_params", {})),
+                    params_schema=json.dumps(strategy_info.get("params_schema", {})),
+                    is_builtin=strategy_info.get("is_builtin", True),
+                    is_active=strategy_info.get("is_active", True),
+                )
+                session.add(record)
+
+            session.commit()
+        finally:
+            session.close()
+
+    def get_strategies(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get all strategies from database."""
+        session = self.get_session()
+        try:
+            query = session.query(StrategyRecord)
+            if active_only:
+                query = query.filter_by(is_active=True)
+
+            return [
+                {
+                    "name": r.name,
+                    "description": r.description,
+                    "default_params": json.loads(r.default_params) if r.default_params else {},
+                    "params_schema": json.loads(r.params_schema) if r.params_schema else {},
+                    "is_builtin": r.is_builtin,
+                    "is_active": r.is_active,
+                }
+                for r in query.all()
+            ]
+        finally:
+            session.close()
+
+    def get_strategy(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get single strategy by name."""
+        session = self.get_session()
+        try:
+            r = session.query(StrategyRecord).filter_by(name=name).first()
+            if r:
+                return {
+                    "name": r.name,
+                    "description": r.description,
+                    "default_params": json.loads(r.default_params) if r.default_params else {},
+                    "params_schema": json.loads(r.params_schema) if r.params_schema else {},
+                    "is_builtin": r.is_builtin,
+                    "is_active": r.is_active,
+                }
+            return None
+        finally:
+            session.close()
+
+    # === Pair Config Operations ===
+
+    def save_pair_config(self, config: Dict[str, Any]) -> None:
+        """Save or update pair-strategy configuration."""
+        session = self.get_session()
+        try:
+            existing = session.query(PairConfigRecord).filter_by(
+                pair=config.get("pair", ""),
+                strategy_name=config.get("strategy_name", "")
+            ).first()
+
+            if existing:
+                existing.timeframe = config.get("timeframe", existing.timeframe)
+                existing.params = json.dumps(config.get("params", {}))
+                existing.is_live = config.get("is_live", existing.is_live)
+                existing.is_backtest = config.get("is_backtest", existing.is_backtest)
+                existing.risk_per_trade = config.get("risk_per_trade", existing.risk_per_trade)
+                existing.max_positions = config.get("max_positions", existing.max_positions)
+            else:
+                record = PairConfigRecord(
+                    pair=config.get("pair", ""),
+                    strategy_name=config.get("strategy_name", ""),
+                    timeframe=config.get("timeframe", "1h"),
+                    params=json.dumps(config.get("params", {})),
+                    is_live=config.get("is_live", False),
+                    is_backtest=config.get("is_backtest", True),
+                    risk_per_trade=config.get("risk_per_trade", 0.02),
+                    max_positions=config.get("max_positions", 1),
+                )
+                session.add(record)
+
+            session.commit()
+        finally:
+            session.close()
+
+    def get_pair_configs(
+        self,
+        pair: Optional[str] = None,
+        strategy_name: Optional[str] = None,
+        live_only: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Get pair configurations."""
+        session = self.get_session()
+        try:
+            query = session.query(PairConfigRecord)
+            if pair:
+                query = query.filter_by(pair=pair)
+            if strategy_name:
+                query = query.filter_by(strategy_name=strategy_name)
+            if live_only:
+                query = query.filter_by(is_live=True)
+
+            return [
+                {
+                    "pair": r.pair,
+                    "strategy_name": r.strategy_name,
+                    "timeframe": r.timeframe,
+                    "params": json.loads(r.params) if r.params else {},
+                    "is_live": r.is_live,
+                    "is_backtest": r.is_backtest,
+                    "risk_per_trade": r.risk_per_trade,
+                    "max_positions": r.max_positions,
+                }
+                for r in query.all()
+            ]
+        finally:
+            session.close()
+
+    def delete_pair_config(self, pair: str, strategy_name: str) -> bool:
+        """Delete a pair configuration."""
+        session = self.get_session()
+        try:
+            record = session.query(PairConfigRecord).filter_by(
+                pair=pair, strategy_name=strategy_name
+            ).first()
+            if record:
+                session.delete(record)
+                session.commit()
+                return True
+            return False
+        finally:
+            session.close()
+
+    # === Backtest Result Operations ===
+
+    def save_backtest_result(self, result: Dict[str, Any]) -> None:
+        """Save backtest result to database."""
+        session = self.get_session()
+        try:
+            record = BacktestResultRecord(
+                backtest_id=result.get("backtest_id", ""),
+                pair=result.get("pair", ""),
+                strategy_name=result.get("strategy_name", ""),
+                timeframe=result.get("timeframe", ""),
+                start_date=result.get("start_date"),
+                end_date=result.get("end_date"),
+                params=json.dumps(result.get("params", {})),
+                total_trades=result.get("total_trades", 0),
+                win_rate=result.get("win_rate", 0.0),
+                profit_factor=result.get("profit_factor", 0.0),
+                total_return=result.get("total_return", 0.0),
+                max_drawdown=result.get("max_drawdown", 0.0),
+                sharpe_ratio=result.get("sharpe_ratio", 0.0),
+                sortino_ratio=result.get("sortino_ratio", 0.0),
+                full_metrics=json.dumps(result.get("full_metrics", {})),
+                status=result.get("status", "completed"),
+            )
+            session.add(record)
+            session.commit()
+        finally:
+            session.close()
+
+    def get_backtest_results(
+        self,
+        pair: Optional[str] = None,
+        strategy_name: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Get backtest results."""
+        session = self.get_session()
+        try:
+            query = session.query(BacktestResultRecord)
+            if pair:
+                query = query.filter_by(pair=pair)
+            if strategy_name:
+                query = query.filter_by(strategy_name=strategy_name)
+            query = query.order_by(BacktestResultRecord.created_at.desc()).limit(limit)
+
+            return [
+                {
+                    "backtest_id": r.backtest_id,
+                    "pair": r.pair,
+                    "strategy_name": r.strategy_name,
+                    "timeframe": r.timeframe,
+                    "start_date": r.start_date.isoformat() if r.start_date else None,
+                    "end_date": r.end_date.isoformat() if r.end_date else None,
+                    "params": json.loads(r.params) if r.params else {},
+                    "total_trades": r.total_trades,
+                    "win_rate": r.win_rate,
+                    "profit_factor": r.profit_factor,
+                    "total_return": r.total_return,
+                    "max_drawdown": r.max_drawdown,
+                    "sharpe_ratio": r.sharpe_ratio,
+                    "sortino_ratio": r.sortino_ratio,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in query.all()
+            ]
+        finally:
+            session.close()
+
+    # === Live Session Operations ===
+
+    def save_live_session(self, session_data: Dict[str, Any]) -> None:
+        """Save or update live trading session."""
+        session = self.get_session()
+        try:
+            existing = session.query(LiveSessionRecord).filter_by(
+                session_id=session_data.get("session_id", "")
+            ).first()
+
+            if existing:
+                existing.status = session_data.get("status", existing.status)
+                existing.stopped_at = session_data.get("stopped_at", existing.stopped_at)
+                existing.total_trades = session_data.get("total_trades", existing.total_trades)
+                existing.realized_pnl = session_data.get("realized_pnl", existing.realized_pnl)
+                existing.unrealized_pnl = session_data.get("unrealized_pnl", existing.unrealized_pnl)
+                existing.current_balance = session_data.get("current_balance", existing.current_balance)
+            else:
+                record = LiveSessionRecord(
+                    session_id=session_data.get("session_id", ""),
+                    pair=session_data.get("pair", ""),
+                    strategy_name=session_data.get("strategy_name", ""),
+                    timeframe=session_data.get("timeframe", "1h"),
+                    params=json.dumps(session_data.get("params", {})),
+                    status=session_data.get("status", "stopped"),
+                    started_at=session_data.get("started_at"),
+                    is_paper=session_data.get("is_paper", True),
+                    initial_balance=session_data.get("initial_balance", 0.0),
+                    current_balance=session_data.get("current_balance", 0.0),
+                )
+                session.add(record)
+
+            session.commit()
+        finally:
+            session.close()
+
+    def get_live_sessions(
+        self,
+        status: Optional[str] = None,
+        pair: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get live trading sessions."""
+        session = self.get_session()
+        try:
+            query = session.query(LiveSessionRecord)
+            if status:
+                query = query.filter_by(status=status)
+            if pair:
+                query = query.filter_by(pair=pair)
+
+            return [
+                {
+                    "session_id": r.session_id,
+                    "pair": r.pair,
+                    "strategy_name": r.strategy_name,
+                    "timeframe": r.timeframe,
+                    "params": json.loads(r.params) if r.params else {},
+                    "status": r.status,
+                    "started_at": r.started_at.isoformat() if r.started_at else None,
+                    "stopped_at": r.stopped_at.isoformat() if r.stopped_at else None,
+                    "total_trades": r.total_trades,
+                    "realized_pnl": r.realized_pnl,
+                    "unrealized_pnl": r.unrealized_pnl,
+                    "is_paper": r.is_paper,
+                    "current_balance": r.current_balance,
+                }
+                for r in query.all()
+            ]
+        finally:
+            session.close()

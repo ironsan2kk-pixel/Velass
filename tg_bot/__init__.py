@@ -15,6 +15,7 @@ from tg_bot.cornix import CornixFormatter
 
 # TelegramBot requires python-telegram-bot
 # Import directly: from tg_bot.bot import TelegramBot
+# Strategy Bot: from tg_bot.strategy_bot import StrategyBot, create_bot
 
 __all__ = [
     "MessageFormatter",
