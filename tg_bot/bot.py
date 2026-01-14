@@ -8,8 +8,8 @@ import asyncio
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from telegram import Bot
-from telegram.error import TelegramError
-from telegram.constants import ParseMode
+from tg_bot.error import TelegramError
+from tg_bot.constants import ParseMode
 
 
 class TelegramBot:

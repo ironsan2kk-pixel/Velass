@@ -18,8 +18,8 @@ from data.binance_client import BinanceClient
 from data.websocket import BinanceWebSocket, Candle, KlineAggregator
 from data.storage import DataStorage
 
-from telegram.bot import TelegramBot, TelegramNotifier
-from telegram.cornix import CornixFormatter
+from tg_bot.bot import TelegramBot, TelegramNotifier
+from tg_bot.cornix import CornixFormatter
 
 from live.position_tracker import PositionTracker
 from live.state import StateManager

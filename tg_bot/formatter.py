@@ -161,9 +161,10 @@ class MessageFormatter:
         """Format daily trading summary."""
         win_rate = (winners / signals * 100) if signals > 0 else 0
         pnl_emoji = "📈" if total_pnl >= 0 else "📉"
+        date_str = date.strftime("%Y-%m-%d")
 
         lines = [
-            f"📊 {self._bold(f'Daily Summary - {date.strftime(\"%Y-%m-%d\")}')}",
+            f"📊 {self._bold(f'Daily Summary - {date_str}')}",
             "",
             f"Signals: {signals}",
             f"Winners: {winners} | Losers: {losers}",
